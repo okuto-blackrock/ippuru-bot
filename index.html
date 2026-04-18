@@ -35,7 +35,7 @@ input{flex:1;border:none;padding:10px 20px;font-size:.9rem;outline:none;backgrou
 button#sendBtn{background:var(--gold);border:none;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s}
 button#sendBtn:hover{background:var(--brown)}
 button#sendBtn svg{fill:#fff;width:20px;height:20px}
-.demo-badge{width:100%;max-width:540px;margin:10px auto;background:#fdf0d5;border:1px dashed var(--gold);padding:8px;border-radius:12px;font-size:.7rem;color:var(--brown);text-align:center}
+.error-badge{width:100%;max-width:540px;margin:10px auto;background:#fff0f0;border:1px solid #ffcccc;padding:12px;border-radius:12px;font-size:.8rem;color:#cc0000;display:none}
 footer{padding:20px;color:var(--gold);font-size:.65rem;text-align:center}
 </style>
 </head>
@@ -53,6 +53,8 @@ footer{padding:20px;color:var(--gold);font-size:.65rem;text-align:center}
 <div class="char-container" id="charBox">
   <img src="https://okuto-blackrock.github.io/ippuru-bot/ippuru_standard.png" class="char-img" id="charImg" alt="いっぷる">
 </div>
+
+<div id="diagArea" class="error-badge"></div>
 
 <div class="suggest-container" id="suggests">
   <button class="suggest-btn" onclick="ask(this)">📅 学校はいつできたの？</button>
@@ -73,15 +75,17 @@ footer{padding:20px;color:var(--gold);font-size:.65rem;text-align:center}
   </button>
 </div>
 
+<footer>大泉第一小学校 創立80周年記念プロジェクト</footer>
+
 <script>
 // ==========================================
 // ⚠️ 設定項目
 // ==========================================
 
-// 1. ここにAPIキーを貼り付けてください
+// 1. ここにAPIキーを貼り付けてください（ダブルクォーテーションの間に）
 const GEMINI_API_KEY = "AIzaSyAYMJmSSqmRyh9hlV1Ztq0uiC3jK8AoA44"; 
 
-// 2. モデル名（安定版の gemini-1.5-flash を使用します）
+// 2. モデル名（安定版を使用）
 const GEMINI_MODEL = "gemini-1.5-flash";
 
 // 3. キャラクター設定
@@ -95,8 +99,21 @@ const sendBtn = document.getElementById('sendBtn');
 const bubble = document.getElementById('bubble');
 const charImg = document.getElementById('charImg');
 const charBox = document.getElementById('charBox');
+const diagArea = document.getElementById('diagArea');
 
 let loading = false;
+
+// 起動時チェック
+window.onload = function() {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === "") {
+    showError("⚠️ APIキーが入力されていません。コードの113行目付近を確認してね。");
+  }
+};
+
+function showError(m) {
+  diagArea.style.display = 'block';
+  diagArea.innerText = m;
+}
 
 function addMsg(role, text){
   const d = document.createElement('div');
@@ -126,14 +143,16 @@ function ask(b){
 async function sendMsg(){
   const t = inp.value.trim();
   if(!t || loading) return;
-  if(!GEMINI_API_KEY) {
-    addMsg('bot', 'APIキーが設定されていないっぷる！コードの最初の方にある GEMINI_API_KEY にキーを入れてね。');
+  
+  if(!GEMINI_API_KEY || GEMINI_API_KEY.length < 10) {
+    showError("⚠️ APIキーが正しくないか、保存されていない可能性があるっぷる。");
     return;
   }
   
   loading = true;
   sendBtn.disabled = true;
   inp.value = '';
+  diagArea.style.display = 'none';
   
   addMsg('user', t);
   setState('thinking');
@@ -151,8 +170,9 @@ async function sendMsg(){
     }, 400);
   } catch(e) {
     console.error(e);
-    addMsg('bot', 'ごめんね、うまく繋がらなかったっぷる。APIキーやモデル設定を確認してね。');
-    setBubble('エラーが起きたっぷる…');
+    showError("❌ エラー: " + e.message);
+    addMsg('bot', '繋がらなかったっぷる…。エラーの内容を先生に見せてみてね。');
+    setBubble('繋がらないっぷる…');
     setState(null);
   } finally {
     loading = false;
@@ -162,6 +182,7 @@ async function sendMsg(){
 }
 
 async function callAPI(t){
+  // URLの中にモデル名とキーを正しく組み込む
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
   
   const r = await fetch(url, {
@@ -174,8 +195,20 @@ async function callAPI(t){
   });
   
   const d = await r.json();
-  if (!r.ok) throw new Error(d.error?.message || 'API Error');
-  return d.candidates?.[0]?.content?.parts?.[0]?.text || "うーん、難しいっぷる...";
+  
+  if (!r.ok) {
+    // 404エラーの場合は、モデル名が間違っている可能性が高い
+    if (r.status === 404) {
+      throw new Error("サーバーが見つかりません(404)。モデル名を確認してね。");
+    }
+    // 400エラーの場合は、キーが間違っている可能性が高い
+    if (r.status === 400) {
+      throw new Error("APIキーが間違っているか、使えない状態です(400)。");
+    }
+    throw new Error(d.error?.message || "原因不明のエラー");
+  }
+  
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || "うまく聞き取れなかったっぷる...";
 }
 </script>
 
