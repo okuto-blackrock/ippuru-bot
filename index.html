@@ -140,7 +140,7 @@ footer{padding:12px;font-size:.7rem;color:var(--gold);text-align:center}
     <button class="send" id="sendBtn" onclick="sendMsg()">&#10148;</button>
   </div>
   <div class="notice">
-    &#128204; <strong>デモモード</strong>で動作中。ソース内の <code>GEMINI_API_KEY</code> にキーを入力すると本番稼働します。
+    &#127809; いっぷるに質問してみよう！
   </div>
 </div>
 <footer>大泉第一小学校 創立80周年記念プロジェクト</footer>
@@ -191,7 +191,7 @@ async function sendMsg(){
   loading=false;sendBtn.disabled=false;inp.focus();
 }
 async function callAPI(t){
-  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key='+GEMINI_API_KEY,{
+  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+GEMINI_API_KEY,{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({system_instruction:{parts:[{text:SP}]},contents:[{parts:[{text:t}]}]})
   });
